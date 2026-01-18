@@ -56,9 +56,27 @@ public class AIConfig {
                 .build();
     }
 
+    //qwen-omni-turbo
+    @Bean
+    public ChatClient qwenMultimodalModel(OpenAiApi baseOpenAiApi) {
+        return ChatClient.builder(
+                        OpenAiChatModel.builder()
+                                .openAiApi(baseOpenAiApi)
+                                .build()
+                )
+                .defaultOptions(
+                        ChatOptions.builder()
+                                .model("qwen-omni-turbo")
+                                .temperature(0.7)
+                                .build()
+                )
+                .build();
+    }
+
     @Bean("glmChatClient")
     public ChatClient glmChatClient(ZhiPuAiChatModel zhiPuAiChatModel) {
         return ChatClient.builder(zhiPuAiChatModel)
+                .defaultAdvisors()
                 .build();
     }
 }
