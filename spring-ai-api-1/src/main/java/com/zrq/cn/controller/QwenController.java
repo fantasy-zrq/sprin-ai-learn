@@ -6,21 +6,23 @@ import com.zrq.cn.entity.Order;
 import com.zrq.cn.utils.AIResponseFormatUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.converter.StructuredOutputConverter;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.TextReader;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,8 +43,14 @@ public class QwenController {
     @Qualifier("qwenPlusChatClient")
     private final ChatClient qwenPlusChatClient;
 
-    @Qualifier("qwenMultimodalModel")
-    private final ChatClient qwenMultimodalModel;
+    @Qualifier("qwenMultiClient")
+    private final ChatClient qwenMultiClient;
+
+    @Qualifier("simpleVectorStore")
+    private final VectorStore simpleVectorStore;
+
+    @Qualifier("postgreVectorStore")
+    private final VectorStore postgreVectorStore;
 
     @GetMapping("/chat")
     public String chat(@RequestParam("userMsg") String userMsg) {
@@ -84,13 +92,26 @@ public class QwenController {
     }
 
     @GetMapping(value = "/stream", headers = "Accept=text/event-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ChatResponse> chatStream(@RequestParam("userMsg") String userMsg, @RequestParam("file") MultipartFile file) throws IOException {
-        ByteArrayResource resource = new ByteArrayResource(file.getBytes());
-        return qwenMultimodalModel.prompt()
+    public Flux<ChatResponse> chatStream(@RequestParam("conversationId") String conversationId, @RequestParam("userMsg") String userMsg) throws IOException {
+        return qwenPlusChatClient.prompt()
                 .user(u -> u.text(userMsg)
-                        .media(MimeTypeUtils.IMAGE_JPEG, resource)
                 )
-                .advisors(new SimpleLoggerAdvisor())
-                .stream().chatResponse();
+                .advisors(advisorSpec -> advisorSpec
+                        .param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
+                        .param(AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .stream()
+                .chatResponse();
+    }
+
+    @PostMapping("/upload")
+    public String uploadRag(@RequestParam("ragFile") MultipartFile ragFile) throws IOException {
+        TextReader textReader = new TextReader(new ByteArrayResource(ragFile.getBytes()));
+        List<Document> documents = textReader.get();
+        documents.forEach(document -> document.getMetadata().put("source", ragFile.getOriginalFilename()));
+
+        TokenTextSplitter splitter = new TokenTextSplitter();
+        List<Document> split = splitter.split(textReader.get());
+        postgreVectorStore.add(split);
+        return "成功加载文档片段数量: " + documents.size();
     }
 }

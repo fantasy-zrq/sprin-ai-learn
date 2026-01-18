@@ -1,6 +1,11 @@
 server:
   port: 8090
 spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://111.228.62.219:15432/spring_ai_learn
+    username: postgres
+    password: postgres
   ai:
     openai:
       #这里要在openai协议下定义多个模型，只能通过定义openAiAPI的形式
