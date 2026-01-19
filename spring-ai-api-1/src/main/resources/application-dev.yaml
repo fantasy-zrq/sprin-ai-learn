@@ -1,6 +1,10 @@
 server:
   port: 8090
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://111.228.62.219:15432/spring_ai_learn

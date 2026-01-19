@@ -4,7 +4,7 @@ import com.zrq.cn.mcp.DateTools;
 import org.springframework.ai.autoconfigure.openai.OpenAiConnectionProperties;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -101,8 +101,8 @@ public class AIConfig {
                                 .temperature(0.7)
                                 .build()
                 )
-                .defaultAdvisors(QuestionAnswerAdvisor.builder(postgreVectorStore).build())
-                .defaultAdvisors(new MessageChatMemoryAdvisor(inChatMemory))
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(inChatMemory).build())
+                .defaultAdvisors(new SimpleLoggerAdvisor())
                 .defaultTools(new DateTools())
                 .build();
     }
